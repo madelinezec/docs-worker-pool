@@ -10,6 +10,9 @@ const uploadToS3Timeout = 20;
 
 const invalidJobDef = new Error('job not valid');
 
+//when job is done building, run the function that updates with comment linking 
+//test out with nodejs
+
 //anything that is passed to an exec must be validated or sanitized
 //we use the term sanitize here lightly -- in this instance this // ////validates
 function safeString(stringToCheck) {
@@ -45,6 +48,8 @@ function safeGithubPush(currentJob) {
 }
 
 async function startGithubBuild(job, logger) {
+  console.log(job)
+  console.log(logger)
   const buildOutput = await workerUtils.promiseTimeoutS(
     buildTimeout,
     job.buildRepo(logger),
@@ -73,10 +78,16 @@ async function pushToStage(publisher, logger) {
   // checkout output of build
   if (stageOutput && stageOutput.status === 'success') {
     await logger.sendSlackMsg(stageOutput.stdout);
-
+    
+    //parse for staging url
+    const startInd = stageOutput.stdout.indexOf("Hosted at");
+    const stagingUrl = stageOutput.stdout.slice(startInd + "Hosted at".length, stageOutput.stdout.length);
+    //call a utility function that makes the comment on the commit
+    workerUtils.sendUpdateGitComment(stagingUrl, currentJob.payload.branchName, currentJob.payload.repoName);
     return new Promise(function(resolve, reject) {
       resolve(true);
     });
+
   }
 }
 
@@ -119,7 +130,7 @@ async function runGithubPush(currentJob) {
   await startGithubBuild(job, logger);
 
   console.log('completed build');
-
+  console.log(job, logger)
   let branchext = '';
   let isMaster = true;
 

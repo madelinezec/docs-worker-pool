@@ -73,6 +73,10 @@ module.exports = {
     await fs.closeSync(fs.openSync(file, 'w'));
   },
 
+  sendUpdateGitComment(stagingUrl, currentJob){
+    console.log(currentJob)
+  },
+
   // Function for testing that resolves in n seconds
   async resolveAfterNSeconds(n) {
     return new Promise(resolve => {
