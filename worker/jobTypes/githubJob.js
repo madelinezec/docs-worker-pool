@@ -28,34 +28,52 @@ class GitHubJobClass {
 
   //curl GET https://api.github.com/repos/mongodb/
   // our maintained directory of makefiles
-  async downloadMakefile() {
-    console.log("we out here!!!");
+  
+  
+  async findUpstreamRepo(){
     const accessToken = '6912c6f9e82a5a68a77073b91b83bbd82ae75e4d';
     //get list of all repos 
     //if not in that list 
     //then go through all repos 
+  //   const queryMongoRepos = `{
+  //     organization(login: "mongodb"){
+  //       repositories(first: 100, after:null, orderBy: { field: NAME, direction: ASC }){
+  //         nodes{
+  //           name
+  //         }
+        // pageInfo {
+        //   hasNextPage
+        //   endCursor
+        // }
+  //       }
+  //     }
+  //   }`
+  // var querying = true;
+  // // while(querying){
+  //   // querying = false;
+  // fetch('https://api.github.com/graphql', {
+  //     method: 'POST',
+  //     body: JSON.stringify({query: queryMongoRepos}),
+  //     headers: {
+  //       'Authorization': `Bearer ${accessToken}`,
+  //     },
+  //   }).then(res => res.text())
+  //     .then(body => {
+  //       try {
+  //         var obj = JSON.parse(body); // this is how you parse a string into JSON 
+  //         console.log(obj);
+  //         querying = false;
+  //       } catch (ex) {
+  //         console.error(ex);
+  //       }
+  //     })
+  //     .catch(error => console.error(error));
+  //   console.log("\n\n\n");
+  
+  // }
+
+
     const query = `{
-      repository(
-        owner: "10gen"
-        name: "mms-docs"
-      ) {
-        name
-        forkCount
-        forks(
-          first: 27
-          orderBy: { field: NAME, direction: DESC }
-        ) {
-          totalCount
-          nodes {
-            name
-          }
-        }
-      }
-    }`
-
-
-
-    const querytwo = `{
       repository(
         owner: "mongodb"
         name: "docs-bi-connector"
@@ -63,7 +81,7 @@ class GitHubJobClass {
         name
         forkCount
         forks(
-          first: 27
+          first: 2
         ) {
           totalCount
           nodes {
@@ -71,13 +89,17 @@ class GitHubJobClass {
           }
         }
       }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
     }`;
     
     var success = false;
     var makefileName = "";
     await fetch('https://api.github.com/graphql', {
       method: 'POST',
-      body: JSON.stringify({query: querytwo}),
+      body: JSON.stringify({query: query}),
       headers: {
         'Authorization': `Bearer ${accessToken}`,
       },
@@ -89,7 +111,7 @@ class GitHubJobClass {
           obj.data.repository.forks.nodes.forEach((item, index) => {
             if(item.name === this.currentJob.payload.repoName){
               makefileName = obj.data.repository.name
-              console.log(makefileName)
+              return makefileName
             }
             else{
               console.log("DID NOT WORK ", item.name, this.currentJob.payload.repoName)
@@ -101,6 +123,12 @@ class GitHubJobClass {
       })
       .catch(error => console.error(error));
     console.log("\n\n\n");
+  }
+  
+  
+  async downloadMakefile() {
+    console.log("we out here!!!");
+    const makefileName = this.findUpstreamRepo()
       
 
     const makefileLocation = `https://raw.githubusercontent.com/mongodb/docs-worker-pool/meta/makefiles/Makefile.${makefileName}`;
