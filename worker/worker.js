@@ -14,7 +14,7 @@ const {
   runPublishDochub,
   safePublishDochub
 } = require('./jobTypes/publishDochubJob');
-
+const {runGithubAssetsPush, safeGithubAssets} = require('./jobTypes/buildProdAssetsJob')
 // add some application monitoring
 const monitorInstance = new Monitor({ component: 'worker' }, mongo);
 
@@ -42,7 +42,8 @@ const maxCheckIn = (2 * MONGO_TIMEOUT_S + JOB_TIMEOUT_S + 60 * 10) * 1000;
 // Dictionary of possible jobs for this node
 const jobTypeToFunc = {
   githubPush: { function: runGithubPush, safe: safeGithubPush },
-  productionDeploy : {function: runGithubProdPush, safe: safeGithubProdPush},
+	productionDeploy : {function: runGithubProdPush, safe: safeGithubProdPush},
+	buildProdAssets : {function: runGithubAssetsPush, safe: safeGithubAssets },
   publishDochub: { function: runPublishDochub, safe: safePublishDochub }
 };
 

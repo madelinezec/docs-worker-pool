@@ -163,6 +163,7 @@ module.exports = {
     }
   },
 
+
   // gets entitlements for user when deploying
   // similar to the `getUserEntitlements` function on stitch
   async getUserEntitlements(githubUsername) {
@@ -203,5 +204,15 @@ module.exports = {
         resolve(returnObject);
       });
     });
-  }
+	},
+	
+	// anything that is passed to an exec must be validated or sanitized
+	// we use the term sanitize here lightly -- in this instance this // ////validates
+	safeString(stringToCheck) {
+		return (
+			validator.isAscii(stringToCheck) &&
+			validator.matches(stringToCheck, /^((\w)*[-.]?(\w)*)*$/)
+		);
+}
+
 };

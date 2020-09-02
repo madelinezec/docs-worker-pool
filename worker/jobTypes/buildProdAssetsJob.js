@@ -1,61 +1,10 @@
-const validator = require('validator');
 const workerUtils = require('../utils/utils');
-const GitHubJob = require('../jobTypes/githubJob').GitHubJobClass;
 const S3Publish = require('../jobTypes/S3Publish').S3PublishClass;
+const GitHubJob = require('../jobTypes/githubJob').GitHubJobClass;
 const GatsbyAdapter = require('../jobTypes/GatsbyAdapter').GatsbyAdapterClass;
 const Logger = require('../utils/logger').LoggerClass;
 
-const buildTimeout = 60 * 450;
-const invalidJobDef = new Error('job not valid');
 
-async function verifyUserEntitlements(currentJob) {
-  const user = currentJob.user;
-  const entitlementsObject = await workerUtils.getUserEntitlements(user);
-  const repoOwner = currentJob.payload.repoOwner;
-  const repoName = currentJob.payload.repoName;
-
-  if (entitlementsObject && entitlementsObject.repos && entitlementsObject.repos.indexOf(`${repoOwner}/${repoName}`) !== -1) {
-    return true;
-  }
-  return false;
-}
-
-async function verifyBranchConfiguredForPublish(currentJob) {
-  const repoObject = {
-    repoOwner: currentJob.payload.repoOwner, repoName: currentJob.payload.repoName,
-  };
-  const repoContent = await workerUtils.getRepoPublishedBranches(repoObject);
-  if (repoContent && repoContent.status === 'success') {
-    const publishedBranches = repoContent.content.git.branches.published;
-    return publishedBranches.includes(currentJob.payload.branchName);
-  }
-  return false;
-}
-
-function safeGithubProdPush(currentJob) {
-  if (
-    !currentJob
-    || !currentJob.payload
-    || !currentJob.payload.repoName
-    || !currentJob.payload.repoOwner
-    || !currentJob.payload.branchName
-  ) {
-    workerUtils.logInMongo(
-      currentJob,
-      `${'    (sanitize)'.padEnd(15)}failed due to insufficient job definition`
-    );
-    throw invalidJobDef;
-  }
-
-  if (
-    workerUtils.safeString(currentJob.payload.repoName) &&
-    workerUtils.safeString(currentJob.payload.repoOwner) &&
-    workerUtils.safeString(currentJob.payload.branchName)
-  ) {
-    return true;
-  }
-  throw invalidJobDef;
-}
 
 async function startGithubBuild(job, logger) {
   const builder = new GatsbyAdapter(job);
@@ -80,10 +29,56 @@ async function startGithubBuild(job, logger) {
   });
 }
 
-async function pushToProduction(publisher, logger) {
+
+async function tarAssets(publisher, logger) {
+  const results = await workerUtils.promiseTimeoutS(
+    buildTimeout,
+    publisher.tarAssets(logger),
+    'Timed out on push to production'
+  );
+  // checkout output of tar
+  if (results && results.status === 'success') {
+    await logger.sendSlackMsg(prodOutput.stdout);
+
+    return new Promise((resolve) => {
+      resolve(true);
+    });
+  }
+  return new Promise((reject) => {
+    reject(false);
+  });
+}
+
+//need to rename eventually
+function safeGithubAssets(currentJob) {
+  if (
+    !currentJob
+    || !currentJob.payload
+    || !currentJob.payload.repoName
+    || !currentJob.payload.repoOwner
+    || !currentJob.payload.branchName
+  ) {
+    workerUtils.logInMongo(
+      currentJob,
+      `${'    (sanitize)'.padEnd(15)}failed due to insufficient job definition`
+    );
+    throw invalidJobDef;
+	}
+	
+  if (
+    workerUtils.safeString(currentJob.payload.repoName) &&
+    workerUtils.safeString(currentJob.payload.repoOwner) &&
+    workerUtils.safeString(currentJob.payload.branchName)
+  ) {
+    return true;
+  }
+  throw invalidJobDef;
+}
+//how to get link from staging?
+async function pushToStaging(publisher, logger) {
   const prodOutput = await workerUtils.promiseTimeoutS(
     buildTimeout,
-    publisher.pushToProduction(logger),
+    publisher.pushToStaging(logger),
     'Timed out on push to production'
   );
   // checkout output of build
@@ -99,7 +94,8 @@ async function pushToProduction(publisher, logger) {
   });
 }
 
-async function runGithubProdPush(currentJob) {
+async function runGithubAssetsPush(currentJob) {
+	console.log("finally!")
   const ispublishable = await verifyBranchConfiguredForPublish(currentJob);
   const userIsEntitled = await verifyUserEntitlements(currentJob);
 
@@ -131,7 +127,9 @@ async function runGithubProdPush(currentJob) {
 
   await startGithubBuild(job, logger);
 
-  await pushToProduction(publisher, logger);
+	await pushToStaging(publisher, logger);
+	
+	await tarAssets(publisher, logger);
 
   const files = workerUtils.getFilesInDir(
     `./${currentJob.payload.repoName}/build/public`,
@@ -142,9 +140,7 @@ async function runGithubProdPush(currentJob) {
 
 module.exports = {
 	startGithubBuild,
-  runGithubProdPush,
-  safeGithubProdPush,
-  verifyBranchConfiguredForPublish,
-  verifyUserEntitlements,
-	pushToProduction,
+	safeGithubAssets,
+  runGithubAssetsPush,
+	pushToStaging,
 };

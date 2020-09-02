@@ -25,14 +25,6 @@ function safeBranch(currentJob) {
     return true;
 }
 
-// anything that is passed to an exec must be validated or sanitized
-// we use the term sanitize here lightly -- in this instance this // ////validates
-function safeString(stringToCheck) {
-    return (
-        validator.isAscii(stringToCheck)
-        && validator.matches(stringToCheck, /^((\w)*[-.]?(\w)*)*$/)
-    );
-}
 
 function safeGithubPush(currentJob) {
     if (
@@ -50,9 +42,9 @@ function safeGithubPush(currentJob) {
     }
 
     if (
-        safeString(currentJob.payload.repoName)
-        && safeString(currentJob.payload.repoOwner)
-        && safeBranch(currentJob)
+			workerUtils.safeString(currentJob.payload.repoName)
+        && workerUtils.safeString(currentJob.payload.repoOwner)
+        && workerUtils.safeBranch(currentJob)
     ) {
         return true;
     }

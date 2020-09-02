@@ -132,6 +132,27 @@ class S3PublishClass {
       throw errResult;
     }
   }
+
+
+  async tarAssets(logger) {
+		const tarCommands = [
+      '. /venv/bin/activate',
+      `cd repos/${this.GitHubJob.getRepoDirName()}`,
+      'tar -cf public',
+		];
+		
+		try {
+			const exec = workerUtils.getExecPromise();
+      const command = tarCommands.join(' && ');
+      const { stdout } = await exec(command);
+			let stdoutMod = stdout;
+			console.log(stdoutMod)
+		} catch (error) {
+			
+		}
+	}
+
+
 }
 
 module.exports = {
