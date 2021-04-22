@@ -39,9 +39,6 @@ next-gen-html: get-build-dependencies
 	npm run build; \
 	cp -r "${REPO_DIR}/snooty/public" ${REPO_DIR};
 
-next-gen-stage: ## Host online for review
-	mut-publish public ${STAGING_BUCKET} --prefix="${COMMIT_HASH}/${MUT_PREFIX}" --stage ${ARGS};
-	echo "Hosted at ${STAGING_URL}/${COMMIT_HASH}/${MUT_PREFIX}/${USER}/${GIT_BRANCH}/";
 
 get-build-dependencies: 
 	@curl https://raw.githubusercontent.com/mongodb/docs-worker-pool/meta/publishedbranches/docs-bi-connector.yaml > ${REPO_DIR}/published-branches.yaml
